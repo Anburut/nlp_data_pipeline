@@ -5,7 +5,45 @@ from src.pipeline import NLPPipeline
 from src.analyzer import DatasetAnalyzer
 
 
-def generate_report(stats, final_df, ratio_df):
+def export_corpus_stats(final_df, output_dir):
+    source_tokens = final_df["Source"].str.split(" ").list.len()
+    target_tokens = final_df["Target"].str.split(" ").list.len()
+
+    all_source_tokens = " ".join(final_df["Source"].to_list()).split()
+    all_target_tokens = " ".join(final_df["Target"].to_list()).split()
+
+    source_vocab = set(all_source_tokens)
+    target_vocab = set(all_target_tokens)
+
+    total_src_tokens = len(all_source_tokens)
+    total_tgt_tokens = len(all_target_tokens)
+
+    stats = {
+        "total_pairs":             len(final_df),
+        "avg_source_tokens":       round(source_tokens.mean(), 2),
+        "avg_target_tokens":       round(target_tokens.mean(), 2),
+        "max_source_tokens":       source_tokens.max(),
+        "max_target_tokens":       target_tokens.max(),
+        "source_vocab_size":       len(source_vocab),
+        "target_vocab_size":       len(target_vocab),
+        "total_source_tokens":     total_src_tokens,
+        "total_target_tokens":     total_tgt_tokens,
+        "ttr_source":              round(len(source_vocab) / total_src_tokens, 4),
+        "ttr_target":              round(len(target_vocab) / total_tgt_tokens, 4),
+        "vocab_ratio_tgt_src":     round(len(target_vocab) / len(source_vocab), 4),
+    }
+
+    stats_path = os.path.join(output_dir, "corpus_stats.txt")
+    with open(stats_path, "w", encoding="utf-8") as f:
+        f.write("CORPUS STATISTICS FOR THESIS\n")
+        f.write("="*40 + "\n")
+        for k, v in stats.items():
+            f.write(f"  {k:<28}: {v}\n")
+
+    return stats
+
+
+def generate_report(stats, final_df, ratio_df, output_dir):
     print("\n" + "="*51)
     print("NMT RESEARCH CORPUS FIREWALL v4.0")
     print("   English <-> Afaan Oromo | Academic Edition")
@@ -57,16 +95,30 @@ def generate_report(stats, final_df, ratio_df):
         print(f"  {label}  {filled}{empty}  {pct:.1f}%{removed}")
 
     print("\n" + "-"*51)
+    print("PHASE 6 - CORPUS LINGUISTICS STATS")
+    corpus_stats = export_corpus_stats(final_df, output_dir)
+    print(f"  Source vocab size       : {corpus_stats['source_vocab_size']}")
+    print(f"  Target vocab size       : {corpus_stats['target_vocab_size']}")
+    print(f"  Vocab ratio (OM/EN)     : {corpus_stats['vocab_ratio_tgt_src']}")
+    print(f"  Avg source tokens       : {corpus_stats['avg_source_tokens']}")
+    print(f"  Avg target tokens       : {corpus_stats['avg_target_tokens']}")
+    print(f"  TTR source (EN)         : {corpus_stats['ttr_source']}")
+    print(f"  TTR target (OM)         : {corpus_stats['ttr_target']}")
+    print(f"  Stats saved to          : corpus_stats.txt")
+
+    print("\n" + "-"*51)
     print("PHASE 10 - FINAL DELIVERABLES")
     print(f"  cleaned_corpus    : {len(final_df)} pairs")
     print(f"  audit_log.csv     : {stats['REMOVE']} removed rows")
     print(f"  review_queue.csv  : generated")
+    print(f"  corpus_stats.txt  : generated")
     print("="*51)
 
     print("\nTHESIS WARNINGS")
     print("  [1] langid removed -> Oromo heuristic classifier applied")
     print("  [2] Vocabulary imbalance EN:OM -> Expected for agglutinative morphology")
     print("  [3] Domain Bias -> Check if Bible data dominates corpus")
+    print("  [4] Säleva & Lignos (2021) -> Address why Oromo differs from Nepali/Kazakh findings")
     print("\n" + "="*51)
 
 
@@ -91,11 +143,12 @@ def main():
     fmt_map = {"1": ("jsonl", ".jsonl"), "2": ("csv", ".csv"), "3": ("tsv", ".tsv")}
     selected_fmt, ext = fmt_map.get(choice, ("jsonl", ".jsonl"))
 
-    output_path = os.path.join(BASE, "data", "output", f"cleaned_corpus{ext}")
-    audit_path  = os.path.join(BASE, "data", "output", "audit_log.csv")
-    review_path = os.path.join(BASE, "data", "output", "review_queue.csv")
+    output_dir  = os.path.join(BASE, "data", "output")
+    output_path = os.path.join(output_dir, f"cleaned_corpus{ext}")
+    audit_path  = os.path.join(output_dir, "audit_log.csv")
+    review_path = os.path.join(output_dir, "review_queue.csv")
 
-    os.makedirs(os.path.join(BASE, "data", "output"), exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     with open(config_path, "r") as f:
         config_data = yaml.safe_load(f)
@@ -105,7 +158,7 @@ def main():
         final_df, ratio_df = pipeline.run_research_mode(
             analyzed_df, output_path, audit_path, review_path, format=selected_fmt
         )
-        generate_report(stats, final_df, ratio_df)
+        generate_report(stats, final_df, ratio_df, output_dir)
     except Exception as e:
         print(f"Error: {e}")
 
