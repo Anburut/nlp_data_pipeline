@@ -40,15 +40,21 @@ pip install polars pyyaml langid
 
 ```
 nlp_data_pipeline/
-├── config/                 # Pipeline settings (YAML)
+├── config/
+│   └── pipeline_config.yaml
 ├── data/
-│   ├── input/              # Your raw corpus goes here
-│   └── output/             # Cleaned files land here
-└── src/
-    ├── analyzer.py         # Phases 1–4: analysis
-    ├── pipeline.py         # Orchestration and export
-    ├── base.py             # Base transformer class
-    └── transformers/       # Phases 5–9: cleaning steps
+│   └── output/
+├── src/
+│   ├── analyzer.py
+│   ├── pipeline.py
+│   ├── base.py
+│   └── transformers/
+│       ├── cleaning.py
+│       ├── filtering.py
+│       ├── linguistic.py
+│       ├── tokenization.py
+│       └── validation.py
+└── main.py
 ```
 
 ---
